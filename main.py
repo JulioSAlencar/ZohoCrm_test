@@ -5,43 +5,35 @@ import os
 
 app = FastAPI()
 
-# Carrega a chave da API a partir das variáveis de ambiente do Render
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-class PromptRequest(BaseModel):
-    prompt: str
-
 @app.post("/chatgpt")
-def chatgpt(req: PromptRequest):
-    # Verifica se a chave da API foi carregada corretamente
-    if not OPENAI_API_KEY:
-        raise HTTPException(status_code=500, detail="OPENAI_API_KEY não foi configurada nas variáveis de ambiente.")
+async def chatgpt(request: Request):
+    try:
+        data = await request.json()
+    except Exception:
+        data = await request.form()
+
+    prompt = data.get("prompt")
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Campo 'prompt' é obrigatório")
 
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
     }
-    data = {
+    payload = {
         "model": "gpt-3.5-turbo",
-        "messages": [{"role": "user", "content": req.prompt}]
+        "messages": [{"role": "user", "content": prompt}]
     }
 
-    response = requests.post(url, headers=headers, json=data)
+    response = requests.post(url, headers=headers, json=payload)
     result = response.json()
 
-    # --- INÍCIO DA CORREÇÃO ---
-    # Imprime a resposta completa da OpenAI no log do Render para depuração
-    print(f"Resposta da OpenAI: {result}")
-
-    # Verifica se a resposta contém a chave "choices" antes de acessá-la
     if "choices" in result and len(result["choices"]) > 0:
         output = result["choices"][0]["message"]["content"].strip()
         return {"response": output}
     else:
-        # Se não houver "choices", a OpenAI retornou um erro.
-        # Retornamos esse erro para o cliente (Zoho).
         error_message = result.get("error", {}).get("message", "Erro desconhecido da API da OpenAI.")
-        print(f"Erro da OpenAI: {error_message}")
         raise HTTPException(status_code=500, detail=f"Erro na API da OpenAI: {error_message}")
-    # --- FIM DA CORREÇÃO ---
