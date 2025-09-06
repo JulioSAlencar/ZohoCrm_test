@@ -18,7 +18,15 @@ async def chatgpt(request: Request):
     payload = {"inputs": prompt}
 
     r = requests.post(f"https://api-inference.huggingface.co/models/{MODEL}", headers=headers, json=payload)
-    result = r.json()
+
+    if r.status_code != 200:
+        return {"error": f"Erro {r.status_code}: {r.text}"}
+
+    try:
+        result = r.json()
+    except json.JSONDecodeError:
+        return {"error": "Resposta não é JSON: " + r.text}
 
     output = result[0]["generated_text"] if isinstance(result, list) else str(result)
     return {"response": output}
+
