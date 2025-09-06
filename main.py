@@ -1,10 +1,11 @@
 from fastapi import FastAPI
 import requests
 from pydantic import BaseModel
+import os
 
 app = FastAPI()
 
-OPENAI_API_KEY = "SUA_API_KEY"
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 class PromptRequest(BaseModel):
     prompt: str
